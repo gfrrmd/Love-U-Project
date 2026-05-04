@@ -46,12 +46,6 @@ async function getSpotifyToken() {
   const clientId = process.env.SPOTIFY_CLIENT_ID;
   const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
 
-  console.log("Spotify credentials check - ID exists:", !!clientId, "Secret exists:", !!clientSecret);
-
-  if (!clientId || !clientSecret) {
-    throw new Error("SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET not set in environment");
-  }
-
   const creds = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
   const res = await fetch("https://accounts.spotify.com/api/token", {
     method: "POST",
@@ -62,11 +56,12 @@ async function getSpotifyToken() {
     body: "grant_type=client_credentials",
   });
 
-  const data = await res.json();
-  console.log("Spotify token response status:", res.status, "- error:", data.error || "none");
+  const rawText = await res.text();
+  console.log("Spotify raw token response:", rawText.slice(0, 500));
 
+  const data = JSON.parse(rawText);
   if (!data.access_token) {
-    throw new Error("Spotify token error: " + (data.error_description || data.error || JSON.stringify(data)));
+    throw new Error("Spotify token error: " + JSON.stringify(data));
   }
 
   spotifyToken = data.access_token;
@@ -82,7 +77,9 @@ app.get("/api/spotify/search", async (req, res) => {
     const r = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=5`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    const data = await r.json();
+    const rawSearch = await r.text();
+    console.log("Spotify search raw:", rawSearch.slice(0, 500));
+    const data = JSON.parse(rawSearch);
     const tracks = (data.tracks?.items || []).map(t => ({
       id: t.id,
       name: t.name,
