@@ -16,7 +16,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-// Init table
 async function initDB() {
   try {
     await pool.query(`
@@ -26,20 +25,67 @@ async function initDB() {
         recipient VARCHAR(100) NOT NULL,
         message TEXT NOT NULL,
         spotify_url VARCHAR(255),
+        spotify_track_name VARCHAR(255),
+        spotify_artist VARCHAR(255),
+        spotify_album_img VARCHAR(255),
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);
-    console.log("Database table ready");
+    console.log("DB ready");
   } catch (e) {
     console.error("DB init error:", e.message);
   }
 }
 
+// --- SPOTIFY TOKEN ---
+let spotifyToken = null;
+let tokenExpiry = 0;
+
+async function getSpotifyToken() {
+  if (spotifyToken && Date.now() < tokenExpiry) return spotifyToken;
+  const creds = Buffer.from(`${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`).toString("base64");
+  const res = await fetch("https://accounts.spotify.com/api/token", {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${creds}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: "grant_type=client_credentials",
+  });
+  const data = await res.json();
+  spotifyToken = data.access_token;
+  tokenExpiry = Date.now() + (data.expires_in - 60) * 1000;
+  return spotifyToken;
+}
+
+// Spotify search endpoint
+app.get("/api/spotify/search", async (req, res) => {
+  const q = req.query.q;
+  if (!q) return res.status(400).json({ error: "Query required" });
+  try {
+    const token = await getSpotifyToken();
+    const r = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=5`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await r.json();
+    const tracks = data.tracks.items.map(t => ({
+      id: t.id,
+      name: t.name,
+      artist: t.artists.map(a => a.name).join(", "),
+      album_img: t.album.images[2]?.url || t.album.images[0]?.url,
+      url: t.external_urls.spotify,
+    }));
+    res.json(tracks);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET all messages
 app.get("/api/messages", async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT id, sender, recipient, message, spotify_url, created_at FROM messages ORDER BY created_at DESC LIMIT 20"
+      "SELECT id, sender, recipient, message, spotify_url, spotify_track_name, spotify_artist, spotify_album_img, created_at FROM messages ORDER BY created_at DESC LIMIT 20"
     );
     res.json(result.rows);
   } catch (e) {
@@ -47,7 +93,7 @@ app.get("/api/messages", async (req, res) => {
   }
 });
 
-// GET messages by recipient name
+// GET messages by recipient
 app.get("/api/messages/:name", async (req, res) => {
   try {
     const name = req.params.name.toLowerCase();
@@ -63,12 +109,12 @@ app.get("/api/messages/:name", async (req, res) => {
 
 // POST send message
 app.post("/api/messages", async (req, res) => {
-  const { sender, recipient, message, spotify_url } = req.body;
-  if (!recipient || !message) return res.status(400).json({ error: "Recipient and message are required" });
+  const { sender, recipient, message, spotify_url, spotify_track_name, spotify_artist, spotify_album_img } = req.body;
+  if (!recipient || !message) return res.status(400).json({ error: "Recipient and message required" });
   try {
     const result = await pool.query(
-      "INSERT INTO messages (sender, recipient, message, spotify_url) VALUES ($1, $2, $3, $4) RETURNING *",
-      [sender || "Anonim", recipient, message, spotify_url || null]
+      "INSERT INTO messages (sender, recipient, message, spotify_url, spotify_track_name, spotify_artist, spotify_album_img) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *",
+      [sender || "Anonim", recipient, message, spotify_url || null, spotify_track_name || null, spotify_artist || null, spotify_album_img || null]
     );
     res.json(result.rows[0]);
   } catch (e) {
@@ -76,7 +122,6 @@ app.post("/api/messages", async (req, res) => {
   }
 });
 
-// Health check
 app.get("/health", (req, res) => res.json({ status: "ok" }));
 
 initDB().then(() => {

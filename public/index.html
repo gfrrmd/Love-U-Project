@@ -19,7 +19,6 @@
   </nav>
 
   <main>
-    <!-- HERO -->
     <section class="hero" id="home">
       <h1>Pesan yang menunggu untuk dibaca.</h1>
       <p>Kirim pesan rahasia untuk seseorang. Atau mungkin, ada yang menulis untukmu.</p>
@@ -29,20 +28,19 @@
       </div>
     </section>
 
-    <!-- SCROLLING PREVIEW -->
     <section class="preview-section">
       <p class="section-label">Surat yang beredar</p>
       <div class="ticker-wrapper">
         <div class="ticker" id="ticker">
-          <div class="letter-card placeholder">
+          <div class="letter-card">
             <div class="card-to">Untuk: —</div>
-            <div class="card-msg">Belum ada surat. Jadilah yang pertama mengirim.</div>
+            <div class="card-msg">Belum ada surat. Jadilah yang pertama.</div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- SEND FORM -->
+    <!-- SEND -->
     <section class="section hidden" id="send">
       <div class="form-container">
         <h2>Kirim Surat</h2>
@@ -59,10 +57,29 @@
           <label>Pesan <span class="required">*</span></label>
           <textarea id="message" placeholder="Tulis apa yang ingin kamu sampaikan..." rows="5"></textarea>
         </div>
+
+        <!-- SPOTIFY SEARCH -->
         <div class="form-group">
-          <label>Link Lagu Spotify <span class="optional">(opsional)</span></label>
-          <input type="url" id="spotify" placeholder="https://open.spotify.com/track/..." />
+          <label>Lagu <span class="optional">(opsional)</span></label>
+          <div class="spotify-search-row">
+            <input type="text" id="spotify-query" placeholder="Cari judul lagu atau nama artis..." oninput="debounceSearch()" />
+            <span class="spotify-icon">🎵</span>
+          </div>
+          <div id="spotify-results" class="spotify-dropdown hidden"></div>
+          <div id="spotify-selected" class="spotify-selected hidden">
+            <img id="sel-img" src="" alt="" />
+            <div class="sel-info">
+              <span id="sel-name"></span>
+              <span id="sel-artist"></span>
+            </div>
+            <button class="sel-remove" onclick="clearSpotify()">✕</button>
+          </div>
+          <input type="hidden" id="spotify-url" />
+          <input type="hidden" id="spotify-track-name" />
+          <input type="hidden" id="spotify-artist" />
+          <input type="hidden" id="spotify-album-img" />
         </div>
+
         <button class="btn-primary full" id="sendBtn" onclick="sendMessage()">Kirim Sekarang</button>
         <div id="send-status"></div>
       </div>
@@ -74,7 +91,7 @@
         <h2>Ada Surat Untukmu?</h2>
         <p class="form-desc">Masukkan namamu untuk melihat pesan yang dikirim untukmu.</p>
         <div class="search-row">
-          <input type="text" id="search-name" placeholder="Namamu..." />
+          <input type="text" id="search-name" placeholder="Namamu..." onkeydown="if(event.key==='Enter')searchMessages()" />
           <button class="btn-primary" onclick="searchMessages()">Cari</button>
         </div>
         <div id="search-results"></div>
