@@ -1,57 +1,86 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Surat Misterius 💌</title>
+  <title>Surat Misterius</title>
   <link rel="stylesheet" href="style.css"/>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Lora:ital,wght@0,400;1,400&display=swap" rel="stylesheet"/>
 </head>
 <body>
 
-  <!-- HERO -->
-  <header class="hero">
-    <div class="hero-content">
-      <h1>💌 Surat Misterius</h1>
-      <p>Kirim pesan rahasia untuk seseorang. Mungkin ada surat untukmu...</p>
-      <div class="hero-buttons">
-        <button onclick="showSection('send')">✉️ Kirim Surat</button>
-        <button onclick="showSection('search')">🔍 Cari Suratku</button>
+  <nav class="navbar">
+    <span class="logo">💌 Surat Misterius</span>
+    <div class="nav-right">
+      <button class="nav-btn" onclick="showSection('send')">Kirim</button>
+      <button class="nav-btn" onclick="showSection('search')">Cari Surat</button>
+      <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">🌙</button>
+    </div>
+  </nav>
+
+  <main>
+    <!-- HERO -->
+    <section class="hero" id="home">
+      <h1>Pesan yang menunggu untuk dibaca.</h1>
+      <p>Kirim pesan rahasia untuk seseorang. Atau mungkin, ada yang menulis untukmu.</p>
+      <div class="hero-actions">
+        <button class="btn-primary" onclick="showSection('send')">Kirim Surat</button>
+        <button class="btn-secondary" onclick="showSection('search')">Cari Suratku</button>
       </div>
-    </div>
-  </header>
+    </section>
 
-  <!-- SCROLLING PREVIEW -->
-  <section class="preview-section">
-    <h2>📬 Surat yang Beredar</h2>
-    <div class="ticker-wrapper">
-      <div class="ticker" id="ticker"></div>
-    </div>
-  </section>
+    <!-- SCROLLING PREVIEW -->
+    <section class="preview-section">
+      <p class="section-label">Surat yang beredar</p>
+      <div class="ticker-wrapper">
+        <div class="ticker" id="ticker">
+          <div class="letter-card placeholder">
+            <div class="card-to">Untuk: —</div>
+            <div class="card-msg">Belum ada surat. Jadilah yang pertama mengirim.</div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-  <!-- SEND FORM -->
-  <section class="section hidden" id="send">
-    <div class="card form-card">
-      <h2>✉️ Kirim Surat Misterius</h2>
-      <input type="text" id="sender" placeholder="Namamu (boleh kosong, jadi Anonim)" />
-      <input type="text" id="recipient" placeholder="Nama penerima *" required />
-      <textarea id="message" placeholder="Tulis pesanmu di sini... *" rows="5"></textarea>
-      <input type="url" id="spotify" placeholder="Link lagu Spotify (opsional)" />
-      <small>Contoh: https://open.spotify.com/track/...</small>
-      <button onclick="sendMessage()">💌 Kirim Sekarang</button>
-      <div id="send-status"></div>
-    </div>
-  </section>
+    <!-- SEND FORM -->
+    <section class="section hidden" id="send">
+      <div class="form-container">
+        <h2>Kirim Surat</h2>
+        <p class="form-desc">Pesanmu akan tampil di halaman utama secara anonim.</p>
+        <div class="form-group">
+          <label>Namamu <span class="optional">(opsional)</span></label>
+          <input type="text" id="sender" placeholder="Biarkan kosong untuk anonim" />
+        </div>
+        <div class="form-group">
+          <label>Nama Penerima <span class="required">*</span></label>
+          <input type="text" id="recipient" placeholder="Siapa yang kamu tuju?" />
+        </div>
+        <div class="form-group">
+          <label>Pesan <span class="required">*</span></label>
+          <textarea id="message" placeholder="Tulis apa yang ingin kamu sampaikan..." rows="5"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Link Lagu Spotify <span class="optional">(opsional)</span></label>
+          <input type="url" id="spotify" placeholder="https://open.spotify.com/track/..." />
+        </div>
+        <button class="btn-primary full" id="sendBtn" onclick="sendMessage()">Kirim Sekarang</button>
+        <div id="send-status"></div>
+      </div>
+    </section>
 
-  <!-- SEARCH -->
-  <section class="section hidden" id="search">
-    <div class="card">
-      <h2>🔍 Ada Surat Untukmu?</h2>
-      <input type="text" id="search-name" placeholder="Masukkan namamu..." />
-      <button onclick="searchMessages()">Cari</button>
-      <div id="search-results"></div>
-    </div>
-  </section>
+    <!-- SEARCH -->
+    <section class="section hidden" id="search">
+      <div class="form-container">
+        <h2>Ada Surat Untukmu?</h2>
+        <p class="form-desc">Masukkan namamu untuk melihat pesan yang dikirim untukmu.</p>
+        <div class="search-row">
+          <input type="text" id="search-name" placeholder="Namamu..." />
+          <button class="btn-primary" onclick="searchMessages()">Cari</button>
+        </div>
+        <div id="search-results"></div>
+      </div>
+    </section>
+  </main>
 
   <script src="app.js"></script>
 </body>
