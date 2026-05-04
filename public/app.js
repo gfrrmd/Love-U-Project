@@ -21,7 +21,7 @@ function showSection(id) {
   if (el) { el.classList.remove('hidden'); el.scrollIntoView({ behavior: 'smooth' }); }
 }
 
-// Music search (iTunes)
+// Music search
 let searchTimer = null;
 function debounceSearch() {
   clearTimeout(searchTimer);
@@ -59,7 +59,7 @@ async function searchMusic() {
 
 function escHtml(str) {
   if (!str) return '';
-  return String(str).replace(/'/g, "&#39;").replace(/"/g, '&quot;');
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;');
 }
 
 function selectTrack(url, name, artist, img) {
@@ -69,7 +69,6 @@ function selectTrack(url, name, artist, img) {
   document.getElementById('spotify-album-img').value = img;
   document.getElementById('spotify-query').value = '';
   document.getElementById('spotify-results').classList.add('hidden');
-
   document.getElementById('sel-img').src = img;
   document.getElementById('sel-name').textContent = name;
   document.getElementById('sel-artist').textContent = artist;
@@ -77,9 +76,7 @@ function selectTrack(url, name, artist, img) {
 }
 
 function clearSpotify() {
-  ['spotify-url','spotify-track-name','spotify-artist','spotify-album-img'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
+  ['spotify-url','spotify-track-name','spotify-artist','spotify-album-img'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('spotify-selected').classList.add('hidden');
   document.getElementById('spotify-query').value = '';
 }
@@ -90,30 +87,100 @@ async function loadPreview() {
     const res = await fetch('/api/messages');
     const data = await res.json();
     if (!Array.isArray(data) || !data.length) return;
-
     const ticker = document.getElementById('ticker');
     const makeCard = (m) => {
       const sp = m.spotify_album_img ? `
         <div class="card-spotify-mini">
           <img src="${m.spotify_album_img}" alt="" />
           <div class="card-spotify-text">
-            <div class="card-spotify-title">${m.spotify_track_name || ''}</div>
-            <div class="card-spotify-artist">${m.spotify_artist || ''}</div>
+            <div class="card-spotify-title">${escHtml(m.spotify_track_name || '')}</div>
+            <div class="card-spotify-artist">${escHtml(m.spotify_artist || '')}</div>
           </div>
         </div>` : '';
-      return `<div class="letter-card">
+      return `<div class="letter-card" onclick='openModal(${JSON.stringify(m)})'>
         <div>
-          <div class="card-to">Untuk: ${m.recipient}</div>
-          <div class="card-msg">${m.message}</div>
+          <div class="card-to">Untuk: ${escHtml(m.recipient)}</div>
+          <div class="card-msg">${escHtml(m.message)}</div>
         </div>
         <div>
-          <div class="card-from">— ${m.sender || 'Anonim'}</div>
+          <div class="card-from">— ${escHtml(m.sender || 'Anonim')}</div>
           ${sp}
         </div>
       </div>`;
     };
     ticker.innerHTML = [...data, ...data].map(makeCard).join('');
   } catch(e) { console.error(e); }
+}
+
+// Modal
+function openModal(m) {
+  const sp = m.spotify_album_img
+    ? `<a class="modal-spotify" href="${m.spotify_url}" target="_blank">
+        <img src="${m.spotify_album_img}" alt="" />
+        <div class="modal-spotify-info">
+          <span class="modal-spotify-name">${escHtml(m.spotify_track_name || '')}</span>
+          <span class="modal-spotify-artist">${escHtml(m.spotify_artist || '')}</span>
+        </div>
+       </a>` : '';
+
+  document.getElementById('modal-content').innerHTML = `
+    <div class="modal-to">Untuk: ${escHtml(m.recipient)}</div>
+    <div class="modal-msg">${escHtml(m.message)}</div>
+    <div class="modal-meta">Dari: ${escHtml(m.sender || 'Anonim')} · ${new Date(m.created_at).toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric'})}</div>
+    ${sp}
+    <div class="modal-actions">
+      <button class="btn-danger" onclick="openDeleteModal(${m.id})">🗑 Hapus surat ini</button>
+    </div>
+  `;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal-overlay') || e.currentTarget.classList.contains('modal-close')) {
+    document.getElementById('modal-overlay').classList.add('hidden');
+  }
+}
+
+let deleteTargetId = null;
+function openDeleteModal(id) {
+  deleteTargetId = id;
+  document.getElementById('delete-pw-input').value = '';
+  document.getElementById('delete-status').textContent = '';
+  document.getElementById('delete-status').className = '';
+  document.getElementById('delete-overlay').classList.remove('hidden');
+}
+
+function closeDeleteModal(e) {
+  if (!e || e.target === document.getElementById('delete-overlay') || e.currentTarget.classList.contains('modal-close')) {
+    document.getElementById('delete-overlay').classList.add('hidden');
+  }
+}
+
+async function confirmDelete() {
+  const pw = document.getElementById('delete-pw-input').value;
+  const status = document.getElementById('delete-status');
+  if (!pw) { status.textContent = 'Masukkan password.'; status.className = 'error'; return; }
+
+  try {
+    const res = await fetch(`/api/messages/${deleteTargetId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw })
+    });
+    const data = await res.json();
+    if (data.success) {
+      closeDeleteModal();
+      closeModal();
+      loadPreview();
+      searchMessages();
+    } else {
+      status.textContent = data.error || 'Gagal menghapus.';
+      status.className = 'error';
+    }
+  } catch(e) {
+    status.textContent = 'Tidak bisa konek ke server.';
+    status.className = 'error';
+  }
 }
 
 // Send
@@ -125,6 +192,7 @@ async function sendMessage() {
   const spotify_track_name = document.getElementById('spotify-track-name').value;
   const spotify_artist = document.getElementById('spotify-artist').value;
   const spotify_album_img = document.getElementById('spotify-album-img').value;
+  const delete_password = document.getElementById('delete-password').value;
   const status = document.getElementById('send-status');
   const btn = document.getElementById('sendBtn');
 
@@ -142,7 +210,7 @@ async function sendMessage() {
     const res = await fetch('/api/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sender, recipient, message, spotify_url, spotify_track_name, spotify_artist, spotify_album_img })
+      body: JSON.stringify({ sender, recipient, message, spotify_url, spotify_track_name, spotify_artist, spotify_album_img, delete_password })
     });
     const data = await res.json();
     if (data.id) {
@@ -151,6 +219,7 @@ async function sendMessage() {
       document.getElementById('sender').value = '';
       document.getElementById('recipient').value = '';
       document.getElementById('message').value = '';
+      document.getElementById('delete-password').value = '';
       clearSpotify();
       loadPreview();
     } else {
@@ -166,7 +235,7 @@ async function sendMessage() {
   }
 }
 
-// Search
+// Search fuzzy by recipient
 async function searchMessages() {
   const name = document.getElementById('search-name').value.trim();
   const container = document.getElementById('search-results');
@@ -174,26 +243,27 @@ async function searchMessages() {
 
   container.innerHTML = '<p class="no-result">Mencari...</p>';
   try {
-    const res = await fetch(`/api/messages/${encodeURIComponent(name)}`);
+    const res = await fetch(`/api/messages/search/${encodeURIComponent(name)}`);
     const data = await res.json();
     if (!Array.isArray(data) || !data.length) {
       container.innerHTML = '<p class="no-result">Belum ada surat untukmu.</p>';
       return;
     }
     container.innerHTML = data.map(m => {
-      const spotifyHtml = m.spotify_album_img
-        ? `<a class="result-spotify" href="${m.spotify_url}" target="_blank">
+      const sp = m.spotify_album_img
+        ? `<div class="result-spotify">
             <img src="${m.spotify_album_img}" alt="" />
             <div class="result-spotify-info">
-              <span class="result-spotify-name">${m.spotify_track_name}</span>
-              <span class="result-spotify-artist">${m.spotify_artist}</span>
+              <span class="result-spotify-name">${escHtml(m.spotify_track_name || '')}</span>
+              <span class="result-spotify-artist">${escHtml(m.spotify_artist || '')}</span>
             </div>
-           </a>`
-        : '';
-      return `<div class="result-card">
-        <div class="result-from">Dari: ${m.sender || 'Anonim'} · ${new Date(m.created_at).toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric'})}</div>
-        <div class="result-msg">${m.message}</div>
-        ${spotifyHtml}
+           </div>` : '';
+      return `<div class="result-card" onclick='openModal(${JSON.stringify(m)})'>
+        <div class="result-header">
+          <div class="result-from">Untuk: ${escHtml(m.recipient)} · Dari: ${escHtml(m.sender || 'Anonim')} · ${new Date(m.created_at).toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric'})}</div>
+        </div>
+        <div class="result-msg">${escHtml(m.message)}</div>
+        ${sp}
       </div>`;
     }).join('');
   } catch(e) {

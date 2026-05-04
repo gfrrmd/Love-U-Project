@@ -44,7 +44,7 @@
     <section class="section hidden" id="send">
       <div class="form-container">
         <h2>Kirim Surat</h2>
-        <p class="form-desc">Pesanmu akan tampil di halaman utama secara anonim.</p>
+        <p class="form-desc">Pesanmu akan tampil di halaman utama.</p>
         <div class="form-group">
           <label>Namamu <span class="optional">(opsional)</span></label>
           <input type="text" id="sender" placeholder="Biarkan kosong untuk anonim" />
@@ -57,8 +57,6 @@
           <label>Pesan <span class="required">*</span></label>
           <textarea id="message" placeholder="Tulis apa yang ingin kamu sampaikan..." rows="5"></textarea>
         </div>
-
-        <!-- SPOTIFY SEARCH -->
         <div class="form-group">
           <label>Lagu <span class="optional">(opsional)</span></label>
           <div class="spotify-search-row">
@@ -79,7 +77,11 @@
           <input type="hidden" id="spotify-artist" />
           <input type="hidden" id="spotify-album-img" />
         </div>
-
+        <div class="form-group">
+          <label>Password Hapus <span class="optional">(opsional)</span></label>
+          <input type="password" id="delete-password" placeholder="Buat password untuk menghapus surat ini nanti" />
+          <small class="hint">Simpan password ini baik-baik, tidak bisa dipulihkan.</small>
+        </div>
         <button class="btn-primary full" id="sendBtn" onclick="sendMessage()">Kirim Sekarang</button>
         <div id="send-status"></div>
       </div>
@@ -89,7 +91,7 @@
     <section class="section hidden" id="search">
       <div class="form-container">
         <h2>Ada Surat Untukmu?</h2>
-        <p class="form-desc">Masukkan namamu untuk melihat pesan yang dikirim untukmu.</p>
+        <p class="form-desc">Cari dengan nama lengkap atau sebagian nama.</p>
         <div class="search-row">
           <input type="text" id="search-name" placeholder="Namamu..." onkeydown="if(event.key==='Enter')searchMessages()" />
           <button class="btn-primary" onclick="searchMessages()">Cari</button>
@@ -98,6 +100,26 @@
       </div>
     </section>
   </main>
+
+  <!-- MODAL -->
+  <div class="modal-overlay hidden" id="modal-overlay" onclick="closeModal(event)">
+    <div class="modal" id="modal">
+      <button class="modal-close" onclick="closeModal()">✕</button>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <!-- DELETE MODAL -->
+  <div class="modal-overlay hidden" id="delete-overlay" onclick="closeDeleteModal(event)">
+    <div class="modal modal-small" id="delete-modal">
+      <button class="modal-close" onclick="closeDeleteModal()">✕</button>
+      <h3>Hapus Surat</h3>
+      <p class="form-desc" style="margin-bottom:1rem">Masukkan password untuk menghapus surat ini.</p>
+      <input type="password" id="delete-pw-input" placeholder="Password..." onkeydown="if(event.key==='Enter')confirmDelete()" />
+      <button class="btn-primary full" onclick="confirmDelete()">Hapus</button>
+      <div id="delete-status"></div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>
