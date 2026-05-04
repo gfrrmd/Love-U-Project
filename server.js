@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3000;
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+  ssl: { rejectUnauthorized: false },
 });
 
 app.use(cors());
@@ -17,18 +17,25 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 // Init table
-pool.query(`
-  CREATE TABLE IF NOT EXISTS messages (
-    id SERIAL PRIMARY KEY,
-    sender VARCHAR(100),
-    recipient VARCHAR(100) NOT NULL,
-    message TEXT NOT NULL,
-    spotify_url VARCHAR(255),
-    created_at TIMESTAMP DEFAULT NOW()
-  )
-`);
+async function initDB() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        sender VARCHAR(100),
+        recipient VARCHAR(100) NOT NULL,
+        message TEXT NOT NULL,
+        spotify_url VARCHAR(255),
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    console.log("Database table ready");
+  } catch (e) {
+    console.error("DB init error:", e.message);
+  }
+}
 
-// GET all messages (for homepage preview, limited)
+// GET all messages
 app.get("/api/messages", async (req, res) => {
   try {
     const result = await pool.query(
@@ -69,4 +76,9 @@ app.post("/api/messages", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => console.log("Server running on port", PORT));
+// Health check
+app.get("/health", (req, res) => res.json({ status: "ok" }));
+
+initDB().then(() => {
+  app.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
+});
