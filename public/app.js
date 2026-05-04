@@ -21,14 +21,14 @@ function showSection(id) {
   if (el) { el.classList.remove('hidden'); el.scrollIntoView({ behavior: 'smooth' }); }
 }
 
-// Spotify search
+// Music search (iTunes)
 let searchTimer = null;
 function debounceSearch() {
   clearTimeout(searchTimer);
-  searchTimer = setTimeout(searchSpotify, 500);
+  searchTimer = setTimeout(searchMusic, 500);
 }
 
-async function searchSpotify() {
+async function searchMusic() {
   const q = document.getElementById('spotify-query').value.trim();
   const dropdown = document.getElementById('spotify-results');
   if (!q) { dropdown.classList.add('hidden'); return; }
@@ -37,14 +37,14 @@ async function searchSpotify() {
   dropdown.classList.remove('hidden');
 
   try {
-    const res = await fetch(`/api/spotify/search?q=${encodeURIComponent(q)}`);
+    const res = await fetch(`/api/music/search?q=${encodeURIComponent(q)}`);
     const tracks = await res.json();
     if (!tracks.length) {
       dropdown.innerHTML = '<div class="spotify-item"><div class="spotify-item-info"><div class="spotify-item-name">Tidak ditemukan</div></div></div>';
       return;
     }
     dropdown.innerHTML = tracks.map(t => `
-      <div class="spotify-item" onclick="selectTrack('${t.url}','${escHtml(t.name)}','${escHtml(t.artist)}','${t.album_img}')">
+      <div class="spotify-item" onclick="selectTrack('${escHtml(t.url)}','${escHtml(t.name)}','${escHtml(t.artist)}','${escHtml(t.album_img)}')"> 
         <img src="${t.album_img}" alt="" />
         <div class="spotify-item-info">
           <div class="spotify-item-name">${t.name}</div>
@@ -58,7 +58,8 @@ async function searchSpotify() {
 }
 
 function escHtml(str) {
-  return str.replace(/'/g, "&#39;").replace(/"/g, '&quot;');
+  if (!str) return '';
+  return String(str).replace(/'/g, "&#39;").replace(/"/g, '&quot;');
 }
 
 function selectTrack(url, name, artist, img) {
