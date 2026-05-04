@@ -37,13 +37,22 @@ async function initDB() {
   }
 }
 
-// --- SPOTIFY TOKEN ---
 let spotifyToken = null;
 let tokenExpiry = 0;
 
 async function getSpotifyToken() {
   if (spotifyToken && Date.now() < tokenExpiry) return spotifyToken;
-  const creds = Buffer.from(`${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`).toString("base64");
+
+  const clientId = process.env.SPOTIFY_CLIENT_ID;
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+
+  console.log("Spotify credentials check - ID exists:", !!clientId, "Secret exists:", !!clientSecret);
+
+  if (!clientId || !clientSecret) {
+    throw new Error("SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET not set in environment");
+  }
+
+  const creds = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
   const res = await fetch("https://accounts.spotify.com/api/token", {
     method: "POST",
     headers: {
@@ -52,13 +61,19 @@ async function getSpotifyToken() {
     },
     body: "grant_type=client_credentials",
   });
+
   const data = await res.json();
+  console.log("Spotify token response status:", res.status, "- error:", data.error || "none");
+
+  if (!data.access_token) {
+    throw new Error("Spotify token error: " + (data.error_description || data.error || JSON.stringify(data)));
+  }
+
   spotifyToken = data.access_token;
   tokenExpiry = Date.now() + (data.expires_in - 60) * 1000;
   return spotifyToken;
 }
 
-// Spotify search endpoint
 app.get("/api/spotify/search", async (req, res) => {
   const q = req.query.q;
   if (!q) return res.status(400).json({ error: "Query required" });
@@ -68,20 +83,20 @@ app.get("/api/spotify/search", async (req, res) => {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await r.json();
-    const tracks = data.tracks.items.map(t => ({
+    const tracks = (data.tracks?.items || []).map(t => ({
       id: t.id,
       name: t.name,
       artist: t.artists.map(a => a.name).join(", "),
-      album_img: t.album.images[2]?.url || t.album.images[0]?.url,
+      album_img: t.album.images[2]?.url || t.album.images[0]?.url || "",
       url: t.external_urls.spotify,
     }));
     res.json(tracks);
   } catch (e) {
+    console.error("Spotify error:", e.message);
     res.status(500).json({ error: e.message });
   }
 });
 
-// GET all messages
 app.get("/api/messages", async (req, res) => {
   try {
     const result = await pool.query(
@@ -93,7 +108,6 @@ app.get("/api/messages", async (req, res) => {
   }
 });
 
-// GET messages by recipient
 app.get("/api/messages/:name", async (req, res) => {
   try {
     const name = req.params.name.toLowerCase();
@@ -107,7 +121,6 @@ app.get("/api/messages/:name", async (req, res) => {
   }
 });
 
-// POST send message
 app.post("/api/messages", async (req, res) => {
   const { sender, recipient, message, spotify_url, spotify_track_name, spotify_artist, spotify_album_img } = req.body;
   if (!recipient || !message) return res.status(400).json({ error: "Recipient and message required" });
