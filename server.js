@@ -37,59 +37,25 @@ async function initDB() {
   }
 }
 
-let spotifyToken = null;
-let tokenExpiry = 0;
-
-async function getSpotifyToken() {
-  if (spotifyToken && Date.now() < tokenExpiry) return spotifyToken;
-
-  const clientId = process.env.SPOTIFY_CLIENT_ID;
-  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
-
-  const creds = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-  const res = await fetch("https://accounts.spotify.com/api/token", {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${creds}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: "grant_type=client_credentials",
-  });
-
-  const rawText = await res.text();
-  console.log("Spotify raw token response:", rawText.slice(0, 500));
-
-  const data = JSON.parse(rawText);
-  if (!data.access_token) {
-    throw new Error("Spotify token error: " + JSON.stringify(data));
-  }
-
-  spotifyToken = data.access_token;
-  tokenExpiry = Date.now() + (data.expires_in - 60) * 1000;
-  return spotifyToken;
-}
-
-app.get("/api/spotify/search", async (req, res) => {
+// iTunes Search API - gratis, tanpa API key
+app.get("/api/music/search", async (req, res) => {
   const q = req.query.q;
   if (!q) return res.status(400).json({ error: "Query required" });
   try {
-    const token = await getSpotifyToken();
-    const r = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=5`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const rawSearch = await r.text();
-    console.log("Spotify search raw:", rawSearch.slice(0, 500));
-    const data = JSON.parse(rawSearch);
-    const tracks = (data.tracks?.items || []).map(t => ({
-      id: t.id,
-      name: t.name,
-      artist: t.artists.map(a => a.name).join(", "),
-      album_img: t.album.images[2]?.url || t.album.images[0]?.url || "",
-      url: t.external_urls.spotify,
+    const r = await fetch(
+      `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=5`
+    );
+    const data = await r.json();
+    const tracks = (data.results || []).map(t => ({
+      id: t.trackId,
+      name: t.trackName,
+      artist: t.artistName,
+      album_img: t.artworkUrl100,
+      url: t.trackViewUrl,
     }));
     res.json(tracks);
   } catch (e) {
-    console.error("Spotify error:", e.message);
+    console.error("iTunes search error:", e.message);
     res.status(500).json({ error: e.message });
   }
 });
