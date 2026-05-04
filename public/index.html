@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Surat Misterius 💌</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400&display=swap" rel="stylesheet"/>
+</head>
+<body>
+
+  <!-- HERO -->
+  <header class="hero">
+    <div class="hero-content">
+      <h1>💌 Surat Misterius</h1>
+      <p>Kirim pesan rahasia untuk seseorang. Mungkin ada surat untukmu...</p>
+      <div class="hero-buttons">
+        <button onclick="showSection('send')">✉️ Kirim Surat</button>
+        <button onclick="showSection('search')">🔍 Cari Suratku</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- SCROLLING PREVIEW -->
+  <section class="preview-section">
+    <h2>📬 Surat yang Beredar</h2>
+    <div class="ticker-wrapper">
+      <div class="ticker" id="ticker"></div>
+    </div>
+  </section>
+
+  <!-- SEND FORM -->
+  <section class="section hidden" id="send">
+    <div class="card form-card">
+      <h2>✉️ Kirim Surat Misterius</h2>
+      <input type="text" id="sender" placeholder="Namamu (boleh kosong, jadi Anonim)" />
+      <input type="text" id="recipient" placeholder="Nama penerima *" required />
+      <textarea id="message" placeholder="Tulis pesanmu di sini... *" rows="5"></textarea>
+      <input type="url" id="spotify" placeholder="Link lagu Spotify (opsional)" />
+      <small>Contoh: https://open.spotify.com/track/...</small>
+      <button onclick="sendMessage()">💌 Kirim Sekarang</button>
+      <div id="send-status"></div>
+    </div>
+  </section>
+
+  <!-- SEARCH -->
+  <section class="section hidden" id="search">
+    <div class="card">
+      <h2>🔍 Ada Surat Untukmu?</h2>
+      <input type="text" id="search-name" placeholder="Masukkan namamu..." />
+      <button onclick="searchMessages()">Cari</button>
+      <div id="search-results"></div>
+    </div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
