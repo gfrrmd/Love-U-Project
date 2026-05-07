@@ -1,4 +1,4 @@
-# 💌 Love-U Project
+# 💌 Love U Project
 
 Website untuk kirim pesan anonim ke siapa saja — bisa ditambahkan lagu dari iTunes, lalu bagikan linknya biar si penerima bisa nemuin suratnya. Pesanmu bisa dihapus kapan saja pakai password yang kamu buat sendiri.
 
