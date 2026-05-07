@@ -120,19 +120,6 @@ Setiap kali kamu push ke branch `main`, Railway akan otomatis deploy ulang aplik
 | `GET` | `/api/music/search?q=` | Cari lagu via iTunes |
 | `GET` | `/health` | Health check |
 
-### Contoh body POST `/api/messages`
-```json
-{
-  "sender": "Anonim",
-  "recipient": "Nama Penerima",
-  "message": "Isi pesanmu di sini",
-  "spotify_url": "https://music.apple.com/...",
-  "spotify_track_name": "Judul Lagu",
-  "spotify_artist": "Nama Artis",
-  "spotify_album_img": "https://...",
-  "delete_password": "passwordRahasia123"
-}
-```
 
 > ℹ️ Field `sender` dan semua field musik bersifat opsional. Jika `delete_password` diisi, pesan hanya bisa dihapus menggunakan password tersebut.
 
