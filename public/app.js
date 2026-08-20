@@ -1,274 +1,285 @@
-// Theme
-function toggleTheme() {
-  const html = document.documentElement;
-  const isDark = html.getAttribute('data-theme') === 'dark';
-  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
-  document.getElementById('themeBtn').textContent = isDark ? '🌙' : '☀️';
-  localStorage.setItem('theme', isDark ? 'light' : 'dark');
-}
+// ===== STATE =====
+let selectedTrack = null;
+let currentAudio = document.getElementById('globalAudio');
+let currentPlayBtn = null;
 
-(function() {
-  const saved = localStorage.getItem('theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', saved);
-  window.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('themeBtn').textContent = saved === 'dark' ? '🌙' : '☀️';
-  });
-})();
-
-function showSection(id) {
-  document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
-  const el = document.getElementById(id);
-  if (el) { el.classList.remove('hidden'); el.scrollIntoView({ behavior: 'smooth' }); }
-}
-
-// Music search
-let searchTimer = null;
-function debounceSearch() {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(searchMusic, 500);
-}
-
-async function searchMusic() {
-  const q = document.getElementById('spotify-query').value.trim();
-  const dropdown = document.getElementById('spotify-results');
-  if (!q) { dropdown.classList.add('hidden'); return; }
-
-  dropdown.innerHTML = '<div class="spotify-item"><div class="spotify-item-info"><div class="spotify-item-name">Mencari...</div></div></div>';
-  dropdown.classList.remove('hidden');
-
-  try {
-    const res = await fetch(`/api/music/search?q=${encodeURIComponent(q)}`);
-    const tracks = await res.json();
-    if (!tracks.length) {
-      dropdown.innerHTML = '<div class="spotify-item"><div class="spotify-item-info"><div class="spotify-item-name">Tidak ditemukan</div></div></div>';
-      return;
-    }
-    dropdown.innerHTML = tracks.map(t => `
-      <div class="spotify-item" onclick="selectTrack('${escHtml(t.url)}','${escHtml(t.name)}','${escHtml(t.artist)}','${escHtml(t.album_img)}')"> 
-        <img src="${t.album_img}" alt="" />
-        <div class="spotify-item-info">
-          <div class="spotify-item-name">${t.name}</div>
-          <div class="spotify-item-artist">${t.artist}</div>
-        </div>
-      </div>
-    `).join('');
-  } catch(e) {
-    dropdown.innerHTML = '<div class="spotify-item"><div class="spotify-item-info"><div class="spotify-item-name">Gagal memuat</div></div></div>';
-  }
+// ===== UTILS =====
+function timeAgo(dateStr) {
+  const diff = (Date.now() - new Date(dateStr)) / 1000;
+  if (diff < 60) return 'baru saja';
+  if (diff < 3600) return `${Math.floor(diff/60)} mnt lalu`;
+  if (diff < 86400) return `${Math.floor(diff/3600)} jam lalu`;
+  return `${Math.floor(diff/86400)} hari lalu`;
 }
 
 function escHtml(str) {
-  if (!str) return '';
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;');
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function selectTrack(url, name, artist, img) {
-  document.getElementById('spotify-url').value = url;
-  document.getElementById('spotify-track-name').value = name;
-  document.getElementById('spotify-artist').value = artist;
-  document.getElementById('spotify-album-img').value = img;
-  document.getElementById('spotify-query').value = '';
-  document.getElementById('spotify-results').classList.add('hidden');
-  document.getElementById('sel-img').src = img;
-  document.getElementById('sel-name').textContent = name;
-  document.getElementById('sel-artist').textContent = artist;
-  document.getElementById('spotify-selected').classList.remove('hidden');
-}
+// ===== RENDER CARD =====
+function renderCard(m) {
+  const hasMusic = m.track_name;
+  const hasPreview = m.preview_url;
 
-function clearSpotify() {
-  ['spotify-url','spotify-track-name','spotify-artist','spotify-album-img'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('spotify-selected').classList.add('hidden');
-  document.getElementById('spotify-query').value = '';
-}
+  const musicHtml = hasMusic ? `
+    <div class="card-music">
+      ${m.track_album_img ? `<img class="music-art" src="${escHtml(m.track_album_img)}" alt="" loading="lazy" />` : ''}
+      <div class="music-info">
+        <div class="music-title">${escHtml(m.track_name)}</div>
+        <div class="music-artist">${escHtml(m.track_artist || '')} ${m.track_url ? `— <a href="${escHtml(m.track_url)}" target="_blank" rel="noopener" style="color:var(--accent);font-size:0.72rem;">Apple Music</a>` : ''}</div>
+      </div>
+      ${hasPreview
+        ? `<button class="btn-play" data-preview="${escHtml(m.preview_url)}" data-id="${m.id}" title="Preview 30 detik">▶</button>`
+        : `<span class="no-preview-badge">No preview</span>`
+      }
+    </div>
+  ` : '';
 
-// Preview ticker
-async function loadPreview() {
-  try {
-    const res = await fetch('/api/messages');
-    const data = await res.json();
-    if (!Array.isArray(data) || !data.length) return;
-    const ticker = document.getElementById('ticker');
-    const makeCard = (m) => {
-      const sp = m.spotify_album_img ? `
-        <div class="card-spotify-mini">
-          <img src="${m.spotify_album_img}" alt="" />
-          <div class="card-spotify-text">
-            <div class="card-spotify-title">${escHtml(m.spotify_track_name || '')}</div>
-            <div class="card-spotify-artist">${escHtml(m.spotify_artist || '')}</div>
-          </div>
-        </div>` : '';
-      return `<div class="letter-card" onclick='openModal(${JSON.stringify(m)})'>
+  return `
+    <div class="menfess-card" data-id="${m.id}">
+      <div class="card-meta">
         <div>
-          <div class="card-to">Untuk: ${escHtml(m.recipient)}</div>
-          <div class="card-msg">${escHtml(m.message)}</div>
+          <div class="card-from">dari <strong>${escHtml(m.sender || 'Anonim')}</strong></div>
+          <div class="card-time">${timeAgo(m.created_at)}</div>
         </div>
-        <div>
-          <div class="card-from">— ${escHtml(m.sender || 'Anonim')}</div>
-          ${sp}
-        </div>
-      </div>`;
-    };
-    ticker.innerHTML = [...data, ...data].map(makeCard).join('');
-  } catch(e) { console.error(e); }
-}
-
-// Modal
-function openModal(m) {
-  const sp = m.spotify_album_img
-    ? `<a class="modal-spotify" href="${m.spotify_url}" target="_blank">
-        <img src="${m.spotify_album_img}" alt="" />
-        <div class="modal-spotify-info">
-          <span class="modal-spotify-name">${escHtml(m.spotify_track_name || '')}</span>
-          <span class="modal-spotify-artist">${escHtml(m.spotify_artist || '')}</span>
-        </div>
-       </a>` : '';
-
-  document.getElementById('modal-content').innerHTML = `
-    <div class="modal-to">Untuk: ${escHtml(m.recipient)}</div>
-    <div class="modal-msg">${escHtml(m.message)}</div>
-    <div class="modal-meta">Dari: ${escHtml(m.sender || 'Anonim')} · ${new Date(m.created_at).toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric'})}</div>
-    ${sp}
-    <div class="modal-actions">
-      <button class="btn-danger" onclick="openDeleteModal(${m.id})">🗑 Hapus surat ini</button>
+        <div class="card-to">untuk ${escHtml(m.recipient)}</div>
+      </div>
+      <div class="card-message">${escHtml(m.message)}</div>
+      ${musicHtml}
+      <button class="btn-delete" data-id="${m.id}" title="Hapus">🗑 hapus</button>
     </div>
   `;
-  document.getElementById('modal-overlay').classList.remove('hidden');
 }
 
-function closeModal(e) {
-  if (!e || e.target === document.getElementById('modal-overlay') || e.currentTarget.classList.contains('modal-close')) {
-    document.getElementById('modal-overlay').classList.add('hidden');
-  }
-}
+// ===== LOAD FEED =====
+async function loadFeed(searchName = '') {
+  const list = document.getElementById('menfessList');
+  const loading = document.getElementById('loadingFeed');
+  const empty = document.getElementById('emptyFeed');
+  const title = document.getElementById('feedTitle');
 
-let deleteTargetId = null;
-function openDeleteModal(id) {
-  deleteTargetId = id;
-  document.getElementById('delete-pw-input').value = '';
-  document.getElementById('delete-status').textContent = '';
-  document.getElementById('delete-status').className = '';
-  document.getElementById('delete-overlay').classList.remove('hidden');
-}
+  list.innerHTML = '';
+  loading.style.display = 'block';
+  empty.style.display = 'none';
 
-function closeDeleteModal(e) {
-  if (!e || e.target === document.getElementById('delete-overlay') || e.currentTarget.classList.contains('modal-close')) {
-    document.getElementById('delete-overlay').classList.add('hidden');
-  }
-}
+  const url = searchName
+    ? `/api/menfess/search/${encodeURIComponent(searchName)}`
+    : '/api/menfess';
 
-async function confirmDelete() {
-  const pw = document.getElementById('delete-pw-input').value;
-  const status = document.getElementById('delete-status');
-  if (!pw) { status.textContent = 'Masukkan password.'; status.className = 'error'; return; }
+  title.textContent = searchName
+    ? `🔍 Menfess untuk "${searchName}"`
+    : '✨ Semua Menfess';
 
   try {
-    const res = await fetch(`/api/messages/${deleteTargetId}`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: pw })
-    });
+    const res = await fetch(url);
     const data = await res.json();
-    if (data.success) {
-      closeDeleteModal();
-      closeModal();
-      loadPreview();
-      searchMessages();
-    } else {
-      status.textContent = data.error || 'Gagal menghapus.';
-      status.className = 'error';
-    }
-  } catch(e) {
-    status.textContent = 'Tidak bisa konek ke server.';
-    status.className = 'error';
+    loading.style.display = 'none';
+    if (!data.length) { empty.style.display = 'block'; return; }
+    list.innerHTML = data.map(renderCard).join('');
+    attachPlayButtons();
+    attachDeleteButtons();
+  } catch {
+    loading.textContent = 'Gagal memuat 😢';
   }
 }
 
-// Send
-async function sendMessage() {
-  const sender = document.getElementById('sender').value.trim();
-  const recipient = document.getElementById('recipient').value.trim();
-  const message = document.getElementById('message').value.trim();
-  const spotify_url = document.getElementById('spotify-url').value;
-  const spotify_track_name = document.getElementById('spotify-track-name').value;
-  const spotify_artist = document.getElementById('spotify-artist').value;
-  const spotify_album_img = document.getElementById('spotify-album-img').value;
-  const delete_password = document.getElementById('delete-password').value;
-  const status = document.getElementById('send-status');
-  const btn = document.getElementById('sendBtn');
+// ===== AUDIO PLAYER =====
+function attachPlayButtons() {
+  document.querySelectorAll('.btn-play').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const previewUrl = btn.dataset.preview;
+      if (!previewUrl) return;
 
-  if (!recipient || !message) {
-    status.textContent = 'Nama penerima dan pesan wajib diisi.';
-    status.className = 'error';
-    return;
-  }
+      // Same track = toggle
+      if (currentPlayBtn === btn) {
+        if (currentAudio.paused) {
+          currentAudio.play();
+          btn.textContent = '⏸';
+          btn.classList.add('playing');
+        } else {
+          currentAudio.pause();
+          btn.textContent = '▶';
+          btn.classList.remove('playing');
+        }
+        return;
+      }
 
+      // Different track — stop old
+      if (currentPlayBtn) {
+        currentPlayBtn.textContent = '▶';
+        currentPlayBtn.classList.remove('playing');
+      }
+      currentAudio.pause();
+      currentAudio.src = previewUrl;
+      currentAudio.play().then(() => {
+        btn.textContent = '⏸';
+        btn.classList.add('playing');
+        currentPlayBtn = btn;
+      }).catch(() => {
+        btn.textContent = '▶';
+        btn.classList.remove('playing');
+      });
+    });
+  });
+
+  currentAudio.addEventListener('ended', () => {
+    if (currentPlayBtn) {
+      currentPlayBtn.textContent = '▶';
+      currentPlayBtn.classList.remove('playing');
+      currentPlayBtn = null;
+    }
+  });
+}
+
+// ===== DELETE =====
+function attachDeleteButtons() {
+  document.querySelectorAll('.btn-delete').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      const pw = prompt('Masukkan password hapus:');
+      if (!pw) return;
+      const res = await fetch(`/api/menfess/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        document.querySelector(`.menfess-card[data-id="${id}"]`)?.remove();
+      } else {
+        alert(data.error || 'Gagal hapus');
+      }
+    });
+  });
+}
+
+// ===== MUSIC SEARCH (in form) =====
+async function searchMusic(q) {
+  const res = await fetch(`/api/music/search?q=${encodeURIComponent(q)}`);
+  return res.json();
+}
+
+function renderMusicResults(tracks) {
+  const container = document.getElementById('musicResults');
+  if (!tracks.length) { container.innerHTML = '<div style="font-size:0.82rem;color:var(--text2);padding:6px 0">Lagu tidak ditemukan 🎵</div>'; return; }
+  container.innerHTML = tracks.map(t => `
+    <div class="music-result-item" data-track='${JSON.stringify(t)}'>
+      ${t.album_img ? `<img src="${escHtml(t.album_img)}" alt="" />` : ''}
+      <div>
+        <div class="ri-name">${escHtml(t.name)}</div>
+        <div class="ri-artist">${escHtml(t.artist)}</div>
+      </div>
+      ${t.preview_url ? '<span class="ri-preview">▶ preview</span>' : ''}
+    </div>
+  `).join('');
+
+  container.querySelectorAll('.music-result-item').forEach(item => {
+    item.addEventListener('click', () => {
+      selectedTrack = JSON.parse(item.dataset.track);
+      document.getElementById('musicResults').innerHTML = '';
+      document.getElementById('musicSearch').value = '';
+      showSelectedTrack();
+    });
+  });
+}
+
+function showSelectedTrack() {
+  const el = document.getElementById('selectedTrack');
+  if (!selectedTrack) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  el.innerHTML = `
+    ${selectedTrack.album_img ? `<img src="${escHtml(selectedTrack.album_img)}" alt="" />` : ''}
+    <div class="st-info">
+      <div class="st-name">${escHtml(selectedTrack.name)}</div>
+      <div class="st-artist">${escHtml(selectedTrack.artist)}</div>
+    </div>
+    <button class="st-remove" title="Hapus pilihan">✕</button>
+  `;
+  el.querySelector('.st-remove').addEventListener('click', () => {
+    selectedTrack = null;
+    el.style.display = 'none';
+  });
+}
+
+// ===== SUBMIT FORM =====
+document.getElementById('menfessForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('btnSubmit');
+  const err = document.getElementById('formError');
+  err.style.display = 'none';
   btn.disabled = true;
   btn.textContent = 'Mengirim...';
-  status.textContent = ''; status.className = '';
+
+  const body = {
+    sender: document.getElementById('fSender').value.trim() || 'Anonim',
+    recipient: document.getElementById('fRecipient').value.trim(),
+    message: document.getElementById('fMessage').value.trim(),
+    delete_password: document.getElementById('fPassword').value || null,
+    track_name: selectedTrack?.name || null,
+    track_artist: selectedTrack?.artist || null,
+    track_album_img: selectedTrack?.album_img || null,
+    track_url: selectedTrack?.url || null,
+    preview_url: selectedTrack?.preview_url || null,
+  };
 
   try {
-    const res = await fetch('/api/messages', {
+    const res = await fetch('/api/menfess', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sender, recipient, message, spotify_url, spotify_track_name, spotify_artist, spotify_album_img, delete_password })
+      body: JSON.stringify(body),
     });
     const data = await res.json();
-    if (data.id) {
-      status.textContent = 'Surat terkirim!';
-      status.className = 'success';
-      document.getElementById('sender').value = '';
-      document.getElementById('recipient').value = '';
-      document.getElementById('message').value = '';
-      document.getElementById('delete-password').value = '';
-      clearSpotify();
-      loadPreview();
-    } else {
-      status.textContent = 'Gagal: ' + (data.error || 'Unknown error');
-      status.className = 'error';
-    }
-  } catch(e) {
-    status.textContent = 'Tidak bisa konek ke server.';
-    status.className = 'error';
+    if (!res.ok) throw new Error(data.error || 'Gagal kirim');
+
+    // Reset form
+    document.getElementById('menfessForm').reset();
+    selectedTrack = null;
+    document.getElementById('selectedTrack').style.display = 'none';
+    document.getElementById('charCount').textContent = '0/500';
+    closeModal();
+    loadFeed();
+  } catch (ex) {
+    err.textContent = ex.message;
+    err.style.display = 'block';
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Kirim Sekarang';
+    btn.textContent = 'Kirim Menfess 💌';
   }
-}
+});
 
-// Search fuzzy by recipient
-async function searchMessages() {
-  const name = document.getElementById('search-name').value.trim();
-  const container = document.getElementById('search-results');
-  if (!name) return;
+// ===== CHAR COUNT =====
+document.getElementById('fMessage').addEventListener('input', function() {
+  document.getElementById('charCount').textContent = `${this.value.length}/500`;
+});
 
-  container.innerHTML = '<p class="no-result">Mencari...</p>';
-  try {
-    const res = await fetch(`/api/messages/search/${encodeURIComponent(name)}`);
-    const data = await res.json();
-    if (!Array.isArray(data) || !data.length) {
-      container.innerHTML = '<p class="no-result">Belum ada surat untukmu.</p>';
-      return;
-    }
-    container.innerHTML = data.map(m => {
-      const sp = m.spotify_album_img
-        ? `<div class="result-spotify">
-            <img src="${m.spotify_album_img}" alt="" />
-            <div class="result-spotify-info">
-              <span class="result-spotify-name">${escHtml(m.spotify_track_name || '')}</span>
-              <span class="result-spotify-artist">${escHtml(m.spotify_artist || '')}</span>
-            </div>
-           </div>` : '';
-      return `<div class="result-card" onclick='openModal(${JSON.stringify(m)})'>
-        <div class="result-header">
-          <div class="result-from">Untuk: ${escHtml(m.recipient)} · Dari: ${escHtml(m.sender || 'Anonim')} · ${new Date(m.created_at).toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric'})}</div>
-        </div>
-        <div class="result-msg">${escHtml(m.message)}</div>
-        ${sp}
-      </div>`;
-    }).join('');
-  } catch(e) {
-    container.innerHTML = '<p class="no-result">Gagal memuat.</p>';
-  }
-}
+// ===== MODAL =====
+function openModal() { document.getElementById('modalOverlay').classList.add('open'); }
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+document.getElementById('btnOpenForm').addEventListener('click', openModal);
+document.getElementById('btnCloseForm').addEventListener('click', closeModal);
+document.getElementById('modalOverlay').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+});
 
-loadPreview();
+// ===== SEARCH =====
+document.getElementById('btnSearch').addEventListener('click', () => {
+  const q = document.getElementById('searchInput').value.trim();
+  loadFeed(q);
+});
+document.getElementById('searchInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('btnSearch').click();
+});
+
+// ===== MUSIC SEARCH BUTTON =====
+document.getElementById('btnMusicSearch').addEventListener('click', async () => {
+  const q = document.getElementById('musicSearch').value.trim();
+  if (!q) return;
+  const tracks = await searchMusic(q);
+  renderMusicResults(tracks);
+});
+document.getElementById('musicSearch').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('btnMusicSearch').click(); }
+});
+
+// ===== INIT =====
+loadFeed();

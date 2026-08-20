@@ -1,126 +1,91 @@
 <!DOCTYPE html>
-<html lang="id" data-theme="dark">
+<html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Surat Misterius</title>
-  <link rel="stylesheet" href="style.css"/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Lora:ital,wght@0,400;1,400&display=swap" rel="stylesheet"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Menfess 💌</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-inner">
+        <div class="logo">💌 menfess</div>
+        <div class="header-actions">
+          <button class="btn-send" id="btnOpenForm">+ Kirim Menfess</button>
+        </div>
+      </div>
+    </header>
 
-  <nav class="navbar">
-    <span class="logo">💌 Surat Misterius</span>
-    <div class="nav-right">
-      <button class="nav-btn" onclick="showSection('send')">Kirim</button>
-      <button class="nav-btn" onclick="showSection('search')">Cari Surat</button>
-      <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">🌙</button>
+    <!-- Search bar -->
+    <div class="search-bar">
+      <div class="search-inner">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Cari menfess untuk siapa..." />
+        <button id="btnSearch">Cari</button>
+      </div>
     </div>
-  </nav>
 
-  <main>
-    <section class="hero" id="home">
-      <h1>Pesan yang menunggu untuk dibaca.</h1>
-      <p>Kirim pesan rahasia untuk seseorang. Atau mungkin, ada yang menulis untukmu.</p>
-      <div class="hero-actions">
-        <button class="btn-primary" onclick="showSection('send')">Kirim Surat</button>
-        <button class="btn-secondary" onclick="showSection('search')">Cari Suratku</button>
+    <!-- Feed -->
+    <main class="feed" id="feed">
+      <div class="feed-header">
+        <span id="feedTitle">✨ Semua Menfess</span>
       </div>
-    </section>
+      <div id="menfessList"></div>
+      <div id="loadingFeed" class="loading-state">Memuat menfess...</div>
+      <div id="emptyFeed" class="empty-state" style="display:none">Belum ada menfess 🥲</div>
+    </main>
+  </div>
 
-    <section class="preview-section">
-      <p class="section-label">Surat yang beredar</p>
-      <div class="ticker-wrapper">
-        <div class="ticker" id="ticker">
-          <div class="letter-card">
-            <div class="card-to">Untuk: —</div>
-            <div class="card-msg">Belum ada surat. Jadilah yang pertama.</div>
-          </div>
-        </div>
+  <!-- Modal Kirim Menfess -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Kirim Menfess 💌</h2>
+        <button class="modal-close" id="btnCloseForm">✕</button>
       </div>
-    </section>
-
-    <!-- SEND -->
-    <section class="section hidden" id="send">
-      <div class="form-container">
-        <h2>Kirim Surat</h2>
-        <p class="form-desc">Pesanmu akan tampil di halaman utama.</p>
+      <form id="menfessForm">
         <div class="form-group">
-          <label>Namamu <span class="optional">(opsional)</span></label>
-          <input type="text" id="sender" placeholder="Biarkan kosong untuk anonim" />
+          <label>Dari (opsional)</label>
+          <input type="text" id="fSender" placeholder="Nama kamu / Anonim" maxlength="100" />
         </div>
         <div class="form-group">
-          <label>Nama Penerima <span class="required">*</span></label>
-          <input type="text" id="recipient" placeholder="Siapa yang kamu tuju?" />
+          <label>Untuk <span class="required">*</span></label>
+          <input type="text" id="fRecipient" placeholder="@username atau nama" maxlength="100" required />
         </div>
         <div class="form-group">
           <label>Pesan <span class="required">*</span></label>
-          <textarea id="message" placeholder="Tulis apa yang ingin kamu sampaikan..." rows="5"></textarea>
+          <textarea id="fMessage" placeholder="Tulis pesanmu di sini..." rows="4" maxlength="500" required></textarea>
+          <span class="char-count" id="charCount">0/500</span>
         </div>
-        <div class="form-group">
-          <label>Lagu <span class="optional">(opsional)</span></label>
-          <div class="spotify-search-row">
-            <input type="text" id="spotify-query" placeholder="Cari judul lagu atau nama artis..." oninput="debounceSearch()" />
-            <span class="spotify-icon">🎵</span>
-          </div>
-          <div id="spotify-results" class="spotify-dropdown hidden"></div>
-          <div id="spotify-selected" class="spotify-selected hidden">
-            <img id="sel-img" src="" alt="" />
-            <div class="sel-info">
-              <span id="sel-name"></span>
-              <span id="sel-artist"></span>
-            </div>
-            <button class="sel-remove" onclick="clearSpotify()">✕</button>
-          </div>
-          <input type="hidden" id="spotify-url" />
-          <input type="hidden" id="spotify-track-name" />
-          <input type="hidden" id="spotify-artist" />
-          <input type="hidden" id="spotify-album-img" />
-        </div>
-        <div class="form-group">
-          <label>Password Hapus <span class="optional">(opsional)</span></label>
-          <input type="password" id="delete-password" placeholder="Buat password untuk menghapus surat ini nanti" />
-          <small class="hint">Simpan password ini baik-baik, tidak bisa dipulihkan.</small>
-        </div>
-        <button class="btn-primary full" id="sendBtn" onclick="sendMessage()">Kirim Sekarang</button>
-        <div id="send-status"></div>
-      </div>
-    </section>
 
-    <!-- SEARCH -->
-    <section class="section hidden" id="search">
-      <div class="form-container">
-        <h2>Ada Surat Untukmu?</h2>
-        <p class="form-desc">Cari dengan nama lengkap atau sebagian nama.</p>
-        <div class="search-row">
-          <input type="text" id="search-name" placeholder="Namamu..." onkeydown="if(event.key==='Enter')searchMessages()" />
-          <button class="btn-primary" onclick="searchMessages()">Cari</button>
+        <!-- Music search -->
+        <div class="form-group">
+          <label>🎵 Lampirkan Lagu (opsional)</label>
+          <div class="music-search">
+            <input type="text" id="musicSearch" placeholder="Cari judul / artis lagu..." />
+            <button type="button" id="btnMusicSearch">Cari</button>
+          </div>
+          <div id="musicResults" class="music-results"></div>
+          <div id="selectedTrack" class="selected-track" style="display:none"></div>
         </div>
-        <div id="search-results"></div>
-      </div>
-    </section>
-  </main>
 
-  <!-- MODAL -->
-  <div class="modal-overlay hidden" id="modal-overlay" onclick="closeModal(event)">
-    <div class="modal" id="modal">
-      <button class="modal-close" onclick="closeModal()">✕</button>
-      <div id="modal-content"></div>
+        <div class="form-group">
+          <label>Password Hapus (opsional)</label>
+          <input type="password" id="fPassword" placeholder="Untuk hapus menfess nanti" maxlength="64" />
+        </div>
+
+        <div id="formError" class="form-error" style="display:none"></div>
+        <button type="submit" class="btn-submit" id="btnSubmit">Kirim Menfess 💌</button>
+      </form>
     </div>
   </div>
 
-  <!-- DELETE MODAL -->
-  <div class="modal-overlay hidden" id="delete-overlay" onclick="closeDeleteModal(event)">
-    <div class="modal modal-small" id="delete-modal">
-      <button class="modal-close" onclick="closeDeleteModal()">✕</button>
-      <h3>Hapus Surat</h3>
-      <p class="form-desc" style="margin-bottom:1rem">Masukkan password untuk menghapus surat ini.</p>
-      <input type="password" id="delete-pw-input" placeholder="Password..." onkeydown="if(event.key==='Enter')confirmDelete()" />
-      <button class="btn-primary full" onclick="confirmDelete()">Hapus</button>
-      <div id="delete-status"></div>
-    </div>
-  </div>
-
+  <audio id="globalAudio" preload="none"></audio>
   <script src="app.js"></script>
 </body>
 </html>
