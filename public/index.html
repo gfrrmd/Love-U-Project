@@ -3,84 +3,76 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Menfess 💌</title>
+  <title>Menfess</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="app">
-    <!-- Header -->
+
     <header class="header">
       <div class="header-inner">
-        <div class="logo">💌 menfess</div>
-        <div class="header-actions">
-          <button class="btn-send" id="btnOpenForm">+ Kirim Menfess</button>
-        </div>
+        <div class="logo">menfess</div>
+        <button class="btn-send" id="btnOpenForm">Kirim</button>
       </div>
     </header>
 
-    <!-- Search bar -->
     <div class="search-bar">
       <div class="search-inner">
-        <span class="search-icon">🔍</span>
+        <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <input type="text" id="searchInput" placeholder="Cari menfess untuk siapa..." />
         <button id="btnSearch">Cari</button>
       </div>
     </div>
 
-    <!-- Feed -->
-    <main class="feed" id="feed">
-      <div class="feed-header">
-        <span id="feedTitle">✨ Semua Menfess</span>
-      </div>
+    <main class="feed">
+      <div class="feed-header" id="feedTitle">Terbaru</div>
       <div id="menfessList"></div>
-      <div id="loadingFeed" class="loading-state">Memuat menfess...</div>
-      <div id="emptyFeed" class="empty-state" style="display:none">Belum ada menfess 🥲</div>
+      <div id="loadingFeed" class="state-msg">Memuat...</div>
+      <div id="emptyFeed" class="state-msg" style="display:none">Belum ada menfess.</div>
     </main>
+
   </div>
 
-  <!-- Modal Kirim Menfess -->
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal">
       <div class="modal-header">
-        <h2>Kirim Menfess 💌</h2>
-        <button class="modal-close" id="btnCloseForm">✕</button>
+        <h2>Kirim Menfess</h2>
+        <button class="modal-close" id="btnCloseForm">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
       </div>
       <form id="menfessForm">
         <div class="form-group">
-          <label>Dari (opsional)</label>
-          <input type="text" id="fSender" placeholder="Nama kamu / Anonim" maxlength="100" />
+          <label>Dari</label>
+          <input type="text" id="fSender" placeholder="Nama kamu (kosongkan untuk anonim)" maxlength="100" />
         </div>
         <div class="form-group">
-          <label>Untuk <span class="required">*</span></label>
+          <label>Untuk <span class="req">*</span></label>
           <input type="text" id="fRecipient" placeholder="@username atau nama" maxlength="100" required />
         </div>
         <div class="form-group">
-          <label>Pesan <span class="required">*</span></label>
-          <textarea id="fMessage" placeholder="Tulis pesanmu di sini..." rows="4" maxlength="500" required></textarea>
-          <span class="char-count" id="charCount">0/500</span>
+          <label>Pesan <span class="req">*</span></label>
+          <textarea id="fMessage" placeholder="Tulis pesanmu..." rows="4" maxlength="500" required></textarea>
+          <span class="char-count" id="charCount">0 / 500</span>
         </div>
-
-        <!-- Music search -->
         <div class="form-group">
-          <label>🎵 Lampirkan Lagu (opsional)</label>
+          <label>Lampirkan Lagu</label>
           <div class="music-search">
-            <input type="text" id="musicSearch" placeholder="Cari judul / artis lagu..." />
+            <input type="text" id="musicSearch" placeholder="Cari judul atau artis..." />
             <button type="button" id="btnMusicSearch">Cari</button>
           </div>
           <div id="musicResults" class="music-results"></div>
           <div id="selectedTrack" class="selected-track" style="display:none"></div>
         </div>
-
         <div class="form-group">
-          <label>Password Hapus (opsional)</label>
-          <input type="password" id="fPassword" placeholder="Untuk hapus menfess nanti" maxlength="64" />
+          <label>Password Hapus</label>
+          <input type="password" id="fPassword" placeholder="Opsional, untuk hapus menfess nanti" maxlength="64" />
         </div>
-
         <div id="formError" class="form-error" style="display:none"></div>
-        <button type="submit" class="btn-submit" id="btnSubmit">Kirim Menfess 💌</button>
+        <button type="submit" class="btn-submit" id="btnSubmit">Kirim</button>
       </form>
     </div>
   </div>
